@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>校园周边 · 生活服务指南</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 高德地图 JS API (已替换为你的Key) -->
+    <script src="https://webapi.amap.com/maps?v=2.0&key=6a9daaed121b2ea680c0de285c7d4676"></script>
+    <style>
+        /* 自定义样式 */
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+        }
+        #map-container {
+            width: 100%;
+            height: 500px;
+        }
+        .tab-btn.active {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .tab-btn {
+            background-color: #e5e7eb;
+            color: #1f2937;
+            padding: 8px 20px;
+            border-radius: 9999px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .tab-btn:hover {
+            background-color: #d1d5db;
+        }
+        .filter-select {
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 6px 12px;
+            background: white;
+        }
+        /* 手机端卡片自适应 */
+        @media (max-width: 640px) {
+            #map-container { height: 300px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ========== 顶部导航 ========== -->
+    <header class="bg-white shadow sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between">
+            <h1 class="text-xl font-bold text-blue-600">🎓 校园周边指南</h1>
+            <nav class="flex space-x-2 sm:space-x-4 text-sm sm:text-base">
+                <a href="#food" class="text-gray-700 hover:text-blue-600 font-medium">平价美食</a>
+                <a href="#service" class="text-gray-700 hover:text-blue-600 font-medium">便民服务</a>
+                <a href="#map" class="text-gray-700 hover:text-blue-600 font-medium">地图导航</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- ========== 主内容 ========== -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- 欢迎语 -->
+        <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-8 rounded">
+            <p class="text-blue-800">📌 新生必看！汇总学校周边平价美食 & 便民服务，支持地图定位、价格筛选。</p>
+        </div>
+
+        <!-- ===== 平价美食区 ===== -->
+        <section id="food" class="mb-12">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">🍜 平价美食</h2>
+            <!-- 筛选栏 -->
+            <div class="flex flex-wrap gap-3 items-center mb-6">
+                <span class="text-sm font-medium text-gray-600">筛选：</span>
+                <select id="foodTypeFilter" class="filter-select">
+                    <option value="all">全部类型</option>
+                    <option value="面食">面食</option>
+                    <option value="米饭">米饭</option>
+                    <option value="小吃">小吃</option>
+                    <option value="饮品">饮品</option>
+                </select>
+                <select id="foodSort" class="filter-select">
+                    <option value="price">按价格 ↑</option>
+                    <option value="distance">按距离 ↑</option>
+                </select>
+            </div>
+            <!-- 卡片容器 -->
+            <div id="foodList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                <!-- 由 JS 动态渲染 -->
+            </div>
+        </section>
+
+        <!-- ===== 便民服务区 ===== -->
+        <section id="service" class="mb-12">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">🛠️ 便民服务</h2>
+            <div class="flex flex-wrap gap-3 items-center mb-6">
+                <span class="text-sm font-medium text-gray-600">筛选：</span>
+                <select id="serviceTypeFilter" class="filter-select">
+                    <option value="all">全部类型</option>
+                    <option value="打印">打印</option>
+                    <option value="药店">药店</option>
+                    <option value="快递">快递</option>
+                    <option value="干洗">干洗</option>
+                </select>
+            </div>
+            <div id="serviceList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                <!-- 由 JS 动态渲染 -->
+            </div>
+        </section>
+
+        <!-- ===== 地图区 ===== -->
+        <section id="map" class="mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">📍 地图一览</h2>
+            <div id="map-container" class="rounded-lg shadow-lg border"></div>
+            <p class="text-sm text-gray-500 mt-2">点击标记可查看店铺详情</p>
+        </section>
+
+    </main>
+
+    <!-- ========== 页脚 ========== -->
+    <footer class="bg-gray-100 border-t mt-12 py-6 text-center text-gray-500 text-sm">
+        <p>校园周边生活服务指南 · 信息整合于 2026年6月 · 仅供学习参考</p>
+    </footer>
+
+    <!-- ============================================================ -->
+    <!-- JavaScript 部分 -->
+    <script>
+        // ===================== 1. 数据（模拟） =====================
+        // 已替换为西北民族大学榆中校区坐标
+        const SCHOOL_LNG = 104.126;   
+        const SCHOOL_LAT = 35.947;     
+
+        // 店铺数据数组（包含美食和便民）
+        const shops = [
+            // ---- 美食 ----
+            { id: 1, name: '老张面馆', type: '面食', category: 'food', price: 12, distance: 200, 
+              lat: 35.9465, lng: 104.1270, desc: '牛肉面量大味美，学生可加面', discount: '凭学生证送卤蛋' },
+            { id: 2, name: '小碗菜', type: '米饭', category: 'food', price: 15, distance: 350,
+              lat: 35.9458, lng: 104.1285, desc: '自选小碗菜，荤素搭配', discount: '满20减2' },
+            { id: 3, name: '煎饼果子摊', type: '小吃', category: 'food', price: 8, distance: 150,
+              lat: 35.9480, lng: 104.1255, desc: '早晚餐首选，加蛋加肠', discount: '加料不加价' },
+            { id: 4, name: '奶茶大叔', type: '饮品', category: 'food', price: 10, distance: 280,
+              lat: 35.9470, lng: 104.1265, desc: '现煮奶茶，珍珠Q弹', discount: '第二杯半价' },
+            // ---- 便民 ----
+            { id: 5, name: '文印快印', type: '打印', category: 'service', price: 0.2, distance: 100,
+              lat: 35.9485, lng: 104.1260, desc: '黑白打印0.2元/页，彩印1元', discount: '打印满10元送封面' },
+            { id: 6, name: '仁心药店', type: '药店', category: 'service', price: null, distance: 400,
+              lat: 35.9450, lng: 104.1290, desc: '常用药品齐全，支持医保', discount: '学生购药9折' },
+            { id: 7, name: '菜鸟驿站', type: '快递', category: 'service', price: null, distance: 80,
+              lat: 35.9488, lng: 104.1275, desc: '代收寄件，营业至22点', discount: '寄件首重优惠' },
+            { id: 8, name: '洁衣干洗', type: '干洗', category: 'service', price: 20, distance: 500,
+              lat: 35.9445, lng: 104.1300, desc: '羽绒服、大衣专业干洗', discount: '三件以上8折' }
+        ];
+
+        // ===================== 2. 渲染卡片 =====================
+        function renderCards(filterType, sortBy, containerId, category) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            // 筛选
+            let filtered = shops.filter(s => s.category === category);
+            if (filterType !== 'all') {
+                filtered = filtered.filter(s => s.type === filterType);
+            }
+
+            // 排序
+            if (sortBy === 'price') {
+                filtered.sort((a, b) => (a.price || 999) - (b.price || 999));
+            } else if (sortBy === 'distance') {
+                filtered.sort((a, b) => a.distance - b.distance);
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="col-span-full text-gray-400 text-center py-8">暂无符合条件的店铺</div>`;
+                return;
+            }
+
+            // 生成卡片 HTML
+            let html = '';
+            filtered.forEach(s => {
+                const priceText = s.price ? `¥${s.price}` : '价格面议';
+                const discountText = s.discount ? `🎁 ${s.discount}` : '';
+                html += `
+                    <div class="card-hover bg-white rounded-lg shadow p-4 border border-gray-100 transition duration-200 flex flex-col">
+                        <h3 class="font-semibold text-lg text-gray-800">${s.name}</h3>
+                        <p class="text-sm text-gray-500 mt-1">${s.desc}</p>
+                        <div class="flex flex-wrap gap-2 mt-2 text-xs">
+                            <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded">${s.type}</span>
+                            <span class="bg-green-100 text-green-700 px-2 py-1 rounded">${priceText}</span>
+                            <span class="bg-yellow-100 text-yellow-700 px-2 py-1 rounded">${s.distance}m</span>
+                        </div>
+                        ${discountText ? `<p class="text-sm text-red-500 mt-1">${discountText}</p>` : ''}
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        // ===================== 3. 初始化渲染 =====================
+        function initRender() {
+            // 美食
+            const foodType = document.getElementById('foodTypeFilter').value;
+            const foodSort = document.getElementById('foodSort').value;
+            renderCards(foodType, foodSort, 'foodList', 'food');
+
+            // 便民
+            const serviceType = document.getElementById('serviceTypeFilter').value;
+            renderCards(serviceType, 'distance', 'serviceList', 'service');
+        }
+
+        // 绑定筛选事件
+        document.addEventListener('DOMContentLoaded', function() {
+            // 美食筛选
+            document.getElementById('foodTypeFilter').addEventListener('change', initRender);
+            document.getElementById('foodSort').addEventListener('change', initRender);
+            // 便民筛选
+            document.getElementById('serviceTypeFilter').addEventListener('change', initRender);
+
+            // 初次渲染
+            initRender();
+
+            // ===================== 4. 初始化地图 =====================
+            // 确保高德地图已加载
+            if (typeof AMap !== 'undefined') {
+                const map = new AMap.Map('map-container', {
+                    center: [SCHOOL_LNG, SCHOOL_LAT],
+                    zoom: 16,
+                    resizeEnable: true
+                });
+
+                // 添加标记
+                shops.forEach(shop => {
+                    const marker = new AMap.Marker({
+                        position: [shop.lng, shop.lat],
+                        title: shop.name,
+                        map: map
+                    });
+
+                    // 点击弹出信息窗口
+                    const infoContent = `
+                        <div style="padding:6px 10px; max-width:200px;">
+                            <strong>${shop.name}</strong><br>
+                            ${shop.desc}<br>
+                            ${shop.price ? '价格：¥'+shop.price : ''} ｜ 距离：${shop.distance}m<br>
+                            ${shop.discount ? '优惠：'+shop.discount : ''}
+                        </div>
+                    `;
+                    const infoWindow = new AMap.InfoWindow({
+                        content: infoContent,
+                        offset: new AMap.Pixel(0, -30)
+                    });
+
+                    marker.on('click', function(e) {
+                        infoWindow.open(map, marker.getPosition());
+                    });
+                });
+
+                // 添加学校中心标记（已修复图标，使用高德官方蓝色标记）
+                const schoolMarker = new AMap.Marker({
+                    position: [SCHOOL_LNG, SCHOOL_LAT],
+                    icon: '//webapi.amap.com/theme/v1.3/markers/b/mark_bs.png',
+                    map: map
+                });
+
+                // 自适应地图包含所有标记
+                map.setFitView();
+            } else {
+                document.getElementById('map-container').innerHTML = '<p class="text-red-500">高德地图加载失败，请检查Key是否正确</p>';
+            }
+        });
+
+        // ===================== 5. 备用：高德地图加载失败处理 =====================
+        window.onerror = function() {
+            const mapContainer = document.getElementById('map-container');
+            if (mapContainer && !document.querySelector('#map-container .amap-container')) {
+                mapContainer.innerHTML = '<p class="text-red-500">地图加载失败，请检查网络或Key</p>';
+            }
+        };
+    </script>
+
+</body>
+</html>
