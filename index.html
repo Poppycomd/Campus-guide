@@ -41,9 +41,99 @@
             padding: 6px 12px;
             background: white;
         }
+        .filter-input {
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 6px 12px;
+            background: white;
+            min-width: 220px;
+        }
+        .view-section.is-hidden {
+            display: none;
+        }
+        .map-marker {
+            width: 30px;
+            height: 30px;
+            border: 2px solid #ffffff;
+            border-radius: 50% 50% 50% 0;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 700;
+            transform: rotate(-45deg);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .map-marker span {
+            transform: rotate(45deg);
+        }
+        .map-marker.food {
+            background: #f97316;
+        }
+        .map-marker.service {
+            background: #2563eb;
+        }
+        .map-marker.is-highlighted {
+            animation: marker-pulse 0.9s ease-in-out infinite;
+            box-shadow:
+                0 0 0 6px rgba(37, 99, 235, 0.22),
+                0 0 0 13px rgba(37, 99, 235, 0.12),
+                0 10px 24px rgba(15, 23, 42, 0.28);
+            transform: rotate(-45deg) scale(1.28);
+        }
+        .card-hover.is-selected {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16), 0 12px 24px rgba(15, 23, 42, 0.12);
+        }
+        @keyframes marker-pulse {
+            0%, 100% {
+                box-shadow:
+                    0 0 0 5px rgba(37, 99, 235, 0.22),
+                    0 0 0 11px rgba(37, 99, 235, 0.12),
+                    0 10px 24px rgba(15, 23, 42, 0.28);
+            }
+            50% {
+                box-shadow:
+                    0 0 0 9px rgba(37, 99, 235, 0.28),
+                    0 0 0 18px rgba(37, 99, 235, 0.08),
+                    0 12px 30px rgba(15, 23, 42, 0.32);
+            }
+        }
+        .school-marker {
+            width: 34px;
+            height: 34px;
+            border: 2px solid #ffffff;
+            border-radius: 9999px;
+            background: #16a34a;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.22);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 700;
+        }
+        .legend-dot {
+            width: 18px;
+            height: 18px;
+            border-radius: 9999px;
+            color: #ffffff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        #filterPanel,
+        .view-section {
+            scroll-margin-top: 90px;
+        }
         /* 手机端卡片自适应 */
         @media (max-width: 640px) {
             #map-container { height: 300px; }
+            .filter-input { min-width: 100%; }
         }
     </style>
 </head>
@@ -54,9 +144,9 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between">
             <h1 class="text-xl font-bold text-blue-600">🎓 校园周边指南</h1>
             <nav class="flex space-x-2 sm:space-x-4 text-sm sm:text-base">
-                <a href="#food" class="text-gray-700 hover:text-blue-600 font-medium">平价美食</a>
-                <a href="#service" class="text-gray-700 hover:text-blue-600 font-medium">便民服务</a>
-                <a href="#map" class="text-gray-700 hover:text-blue-600 font-medium">地图导航</a>
+                <a href="#food" data-view="food" class="nav-link text-gray-700 hover:text-blue-600 font-medium">平价美食</a>
+                <a href="#service" data-view="service" class="nav-link text-gray-700 hover:text-blue-600 font-medium">便民服务</a>
+                <a href="#map" data-view="map" class="nav-link text-gray-700 hover:text-blue-600 font-medium">地图导航</a>
             </nav>
         </div>
     </header>
@@ -69,9 +159,38 @@
             <p class="text-blue-800">📌 新生必看！汇总学校周边平价美食 & 便民服务，支持地图定位、价格筛选。</p>
         </div>
 
+        <!-- 全局搜索与页面切换 -->
+        <section id="filterPanel" class="bg-white border border-gray-100 rounded-lg shadow-sm p-4 mb-8">
+            <div class="flex flex-wrap gap-3 items-center justify-between">
+                <div class="flex flex-wrap gap-3 items-center">
+                    <input id="searchInput" class="filter-input" type="search" placeholder="搜索店铺、类型或优惠">
+                    <select id="priceRangeFilter" class="filter-select">
+                        <option value="all">全部价格</option>
+                        <option value="under10">10元以内</option>
+                        <option value="10to20">10-20元</option>
+                        <option value="over20">20元以上</option>
+                        <option value="unknown">价格面议</option>
+                    </select>
+                    <select id="distanceRangeFilter" class="filter-select">
+                        <option value="all">全部距离</option>
+                        <option value="under200">200米内</option>
+                        <option value="under300">300米内</option>
+                        <option value="under500">500米内</option>
+                    </select>
+                </div>
+                <div class="flex flex-wrap gap-2 items-center" id="viewTabs">
+                    <button type="button" class="tab-btn active" data-view="all">全部</button>
+                    <button type="button" class="tab-btn" data-view="food">平价美食</button>
+                    <button type="button" class="tab-btn" data-view="service">便民服务</button>
+                    <button type="button" class="tab-btn" data-view="map">地图一览</button>
+                </div>
+            </div>
+            <p id="resultSummary" class="text-sm text-gray-500 mt-3">正在整理店铺信息...</p>
+        </section>
+
         <!-- ===== 平价美食区 ===== -->
-        <section id="food" class="mb-12">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4">🍜 平价美食</h2>
+        <section id="food" class="view-section mb-12" data-section="food">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">🍜 平价美食 <span id="foodCount" class="text-sm font-normal text-gray-400"></span></h2>
             <!-- 筛选栏 -->
             <div class="flex flex-wrap gap-3 items-center mb-6">
                 <span class="text-sm font-medium text-gray-600">筛选：</span>
@@ -94,8 +213,8 @@
         </section>
 
         <!-- ===== 便民服务区 ===== -->
-        <section id="service" class="mb-12">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4">🛠️ 便民服务</h2>
+        <section id="service" class="view-section mb-12" data-section="service">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">🛠️ 便民服务 <span id="serviceCount" class="text-sm font-normal text-gray-400"></span></h2>
             <div class="flex flex-wrap gap-3 items-center mb-6">
                 <span class="text-sm font-medium text-gray-600">筛选：</span>
                 <select id="serviceTypeFilter" class="filter-select">
@@ -112,10 +231,15 @@
         </section>
 
         <!-- ===== 地图区 ===== -->
-        <section id="map" class="mb-8">
+        <section id="map" class="view-section mb-8" data-section="map">
             <h2 class="text-2xl font-bold text-gray-800 mb-4">📍 地图一览</h2>
             <div id="map-container" class="rounded-lg shadow-lg border"></div>
-            <p class="text-sm text-gray-500 mt-2">点击标记可查看店铺详情</p>
+            <div class="flex flex-wrap gap-3 text-sm text-gray-600 mt-3">
+                <span><span class="legend-dot" style="background:#f97316;">1</span> 平价美食</span>
+                <span><span class="legend-dot" style="background:#2563eb;">5</span> 便民服务</span>
+                <span><span class="legend-dot" style="background:#16a34a;">校</span> 西北民族大学榆中校区</span>
+            </div>
+            <p id="mapSummary" class="text-sm text-gray-500 mt-2">点击 1-8 号店铺标记可查看详情，学校位置不参与店铺编号。</p>
         </section>
 
     </main>
@@ -129,65 +253,142 @@
     <!-- JavaScript 部分 -->
     <script>
         // ===================== 1. 数据（模拟） =====================
-        // 已替换为西北民族大学榆中校区坐标
-        const SCHOOL_LNG = 104.126;   
-        const SCHOOL_LAT = 35.947;     
+        // 西北民族大学榆中校区附近坐标（高德地图坐标系）
+        const SCHOOL_LNG = 104.1581;   
+        const SCHOOL_LAT = 35.9356;     
 
         // 店铺数据数组（包含美食和便民）
         const shops = [
             // ---- 美食 ----
-            { id: 1, name: '老张面馆', type: '面食', category: 'food', price: 12, distance: 200, 
-              lat: 35.9465, lng: 104.1270, desc: '牛肉面量大味美，学生可加面', discount: '凭学生证送卤蛋' },
-            { id: 2, name: '小碗菜', type: '米饭', category: 'food', price: 15, distance: 350,
-              lat: 35.9458, lng: 104.1285, desc: '自选小碗菜，荤素搭配', discount: '满20减2' },
-            { id: 3, name: '煎饼果子摊', type: '小吃', category: 'food', price: 8, distance: 150,
-              lat: 35.9480, lng: 104.1255, desc: '早晚餐首选，加蛋加肠', discount: '加料不加价' },
-            { id: 4, name: '奶茶大叔', type: '饮品', category: 'food', price: 10, distance: 280,
-              lat: 35.9470, lng: 104.1265, desc: '现煮奶茶，珍珠Q弹', discount: '第二杯半价' },
+            { id: 1, name: '老张面馆', type: '面食', category: 'food', price: 12, distance: 610, 
+              lat: 35.9372, lng: 104.1646, desc: '牛肉面量大味美，学生可加面', discount: '凭学生证送卤蛋' },
+            { id: 2, name: '小碗菜', type: '米饭', category: 'food', price: 15, distance: 600,
+              lat: 35.9352, lng: 104.1647, desc: '自选小碗菜，荤素搭配', discount: '满20减2' },
+            { id: 3, name: '煎饼果子摊', type: '小吃', category: 'food', price: 8, distance: 610,
+              lat: 35.9340, lng: 104.1646, desc: '早晚餐首选，加蛋加肠', discount: '加料不加价' },
+            { id: 4, name: '奶茶大叔', type: '饮品', category: 'food', price: 10, distance: 610,
+              lat: 35.9362, lng: 104.1648, desc: '现煮奶茶，珍珠Q弹', discount: '第二杯半价' },
             // ---- 便民 ----
-            { id: 5, name: '文印快印', type: '打印', category: 'service', price: 0.2, distance: 100,
-              lat: 35.9485, lng: 104.1260, desc: '黑白打印0.2元/页，彩印1元', discount: '打印满10元送封面' },
-            { id: 6, name: '仁心药店', type: '药店', category: 'service', price: null, distance: 400,
-              lat: 35.9450, lng: 104.1290, desc: '常用药品齐全，支持医保', discount: '学生购药9折' },
-            { id: 7, name: '菜鸟驿站', type: '快递', category: 'service', price: null, distance: 80,
-              lat: 35.9488, lng: 104.1275, desc: '代收寄件，营业至22点', discount: '寄件首重优惠' },
-            { id: 8, name: '洁衣干洗', type: '干洗', category: 'service', price: 20, distance: 500,
-              lat: 35.9445, lng: 104.1300, desc: '羽绒服、大衣专业干洗', discount: '三件以上8折' }
+            { id: 5, name: '文印快印', type: '打印', category: 'service', price: 0.2, distance: 380,
+              lat: 35.9366, lng: 104.1541, desc: '黑白打印0.2元/页，彩印1元', discount: '打印满10元送封面' },
+            { id: 6, name: '全康堂大药房', type: '药店', category: 'service', price: null, distance: 590,
+              lat: 35.9347, lng: 104.1645, desc: '校外药房，常用药品较全', discount: '学生购药9折' },
+            { id: 7, name: '菜鸟驿站', type: '快递', category: 'service', price: null, distance: 250,
+              lat: 35.9373, lng: 104.1563, desc: '代收寄件，营业至22点', discount: '寄件首重优惠' },
+            { id: 8, name: '洁衣干洗', type: '干洗', category: 'service', price: 20, distance: 615,
+              lat: 35.9350, lng: 104.1649, desc: '羽绒服、大衣专业干洗', discount: '三件以上8折' }
         ];
 
-        // ===================== 2. 渲染卡片 =====================
-        function renderCards(filterType, sortBy, containerId, category) {
-            const container = document.getElementById(containerId);
-            if (!container) return;
+        // ===================== 2. 筛选、排序与页面切换 =====================
+        let currentView = 'all';
+        let amapInstance = null;
+        const renderedCounts = { food: null, service: null };
+        const shopMarkersById = new Map();
+        const shopInfoWindowsById = new Map();
+        let highlightedShopId = null;
 
-            // 筛选
-            let filtered = shops.filter(s => s.category === category);
-            if (filterType !== 'all') {
-                filtered = filtered.filter(s => s.type === filterType);
+        function getElementValue(id, fallback = 'all') {
+            const element = document.getElementById(id);
+            return element ? element.value : fallback;
+        }
+
+        function getFilterState() {
+            return {
+                keyword: getElementValue('searchInput', '').trim().toLowerCase(),
+                priceRange: getElementValue('priceRangeFilter'),
+                distanceRange: getElementValue('distanceRangeFilter')
+            };
+        }
+
+        function matchesKeyword(shop, keyword) {
+            if (!keyword) return true;
+            const searchableText = [
+                shop.name,
+                shop.type,
+                shop.desc,
+                shop.discount,
+                shop.price,
+                `${shop.distance}m`
+            ].filter(Boolean).join(' ').toLowerCase();
+
+            return searchableText.includes(keyword);
+        }
+
+        function matchesPrice(shop, priceRange) {
+            const price = Number.isFinite(shop.price) ? shop.price : null;
+            if (priceRange === 'under10') return price !== null && price <= 10;
+            if (priceRange === '10to20') return price !== null && price > 10 && price <= 20;
+            if (priceRange === 'over20') return price !== null && price > 20;
+            if (priceRange === 'unknown') return price === null;
+            return true;
+        }
+
+        function matchesDistance(shop, distanceRange) {
+            if (distanceRange === 'under200') return shop.distance <= 200;
+            if (distanceRange === 'under300') return shop.distance <= 300;
+            if (distanceRange === 'under500') return shop.distance <= 500;
+            return true;
+        }
+
+        function getFilteredShops(category, typeFilter) {
+            const { keyword, priceRange, distanceRange } = getFilterState();
+            let filtered = shops.filter(shop => shop.category === category);
+
+            if (typeFilter !== 'all') {
+                filtered = filtered.filter(shop => shop.type === typeFilter);
             }
+
+            return filtered.filter(shop =>
+                matchesKeyword(shop, keyword) &&
+                matchesPrice(shop, priceRange) &&
+                matchesDistance(shop, distanceRange)
+            );
+        }
+
+        function getShopMapNumber(shop) {
+            return shops.findIndex(item => item.id === shop.id) + 1;
+        }
+
+        // ===================== 3. 渲染卡片 =====================
+        function renderCards(filterType, sortBy, containerId, category, countId) {
+            const container = document.getElementById(containerId);
+            if (!container) return 0;
+
+            let filtered = getFilteredShops(category, filterType);
 
             // 排序
             if (sortBy === 'price') {
-                filtered.sort((a, b) => (a.price || 999) - (b.price || 999));
+                filtered.sort((a, b) => {
+                    const aPrice = Number.isFinite(a.price) ? a.price : 999;
+                    const bPrice = Number.isFinite(b.price) ? b.price : 999;
+                    return aPrice - bPrice;
+                });
             } else if (sortBy === 'distance') {
                 filtered.sort((a, b) => a.distance - b.distance);
             }
 
+            const countElement = document.getElementById(countId);
+            if (countElement) {
+                countElement.textContent = `共${filtered.length}家`;
+            }
+
             if (filtered.length === 0) {
-                container.innerHTML = `<div class="col-span-full text-gray-400 text-center py-8">暂无符合条件的店铺</div>`;
-                return;
+                container.innerHTML = `<div class="col-span-full text-gray-400 text-center py-8 border border-dashed rounded-lg">暂无符合条件的店铺，可以换个关键词或放宽筛选条件</div>`;
+                return 0;
             }
 
             // 生成卡片 HTML
             let html = '';
             filtered.forEach(s => {
-                const priceText = s.price ? `¥${s.price}` : '价格面议';
+                const priceText = Number.isFinite(s.price) ? `¥${s.price}` : '价格面议';
                 const discountText = s.discount ? `🎁 ${s.discount}` : '';
+                const mapNumber = getShopMapNumber(s);
                 html += `
-                    <div class="card-hover bg-white rounded-lg shadow p-4 border border-gray-100 transition duration-200 flex flex-col">
-                        <h3 class="font-semibold text-lg text-gray-800">${s.name}</h3>
+                    <div class="card-hover bg-white rounded-lg shadow p-4 border border-gray-100 transition duration-200 flex flex-col cursor-pointer" data-shop-id="${s.id}" tabindex="0" role="button" aria-label="查看${s.name}信息">
+                        <h3 class="font-semibold text-lg text-gray-800">${mapNumber}. ${s.name}</h3>
                         <p class="text-sm text-gray-500 mt-1">${s.desc}</p>
                         <div class="flex flex-wrap gap-2 mt-2 text-xs">
+                            <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded">地图${mapNumber}号</span>
                             <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded">${s.type}</span>
                             <span class="bg-green-100 text-green-700 px-2 py-1 rounded">${priceText}</span>
                             <span class="bg-yellow-100 text-yellow-700 px-2 py-1 rounded">${s.distance}m</span>
@@ -197,82 +398,280 @@
                 `;
             });
             container.innerHTML = html;
+            return filtered.length;
         }
 
-        // ===================== 3. 初始化渲染 =====================
+        // ===================== 4. 初始化渲染 =====================
+        function updateSectionVisibilityForResults() {
+            if (currentView !== 'all') return;
+
+            const foodSection = document.getElementById('food');
+            const serviceSection = document.getElementById('service');
+
+            if (foodSection && renderedCounts.food !== null) {
+                foodSection.classList.toggle('is-hidden', renderedCounts.food === 0);
+            }
+
+            if (serviceSection && renderedCounts.service !== null) {
+                serviceSection.classList.toggle('is-hidden', renderedCounts.service === 0);
+            }
+        }
+
         function initRender() {
             // 美食
             const foodType = document.getElementById('foodTypeFilter').value;
             const foodSort = document.getElementById('foodSort').value;
-            renderCards(foodType, foodSort, 'foodList', 'food');
+            const foodCount = renderCards(foodType, foodSort, 'foodList', 'food', 'foodCount');
 
             // 便民
             const serviceType = document.getElementById('serviceTypeFilter').value;
-            renderCards(serviceType, 'distance', 'serviceList', 'service');
+            const serviceCount = renderCards(serviceType, 'distance', 'serviceList', 'service', 'serviceCount');
+
+            renderedCounts.food = foodCount;
+            renderedCounts.service = serviceCount;
+            updateSectionVisibilityForResults();
+
+            const resultSummary = document.getElementById('resultSummary');
+            const keyword = getElementValue('searchInput', '').trim();
+            if (resultSummary) {
+                const total = foodCount + serviceCount;
+                resultSummary.textContent = keyword
+                    ? `搜索“${keyword}”，当前筛选共找到 ${total} 家店铺`
+                    : `当前筛选共显示 ${total} 家店铺，可继续按价格、距离和类型缩小范围`;
+            }
+        }
+
+        function setActiveView(view, shouldScroll = false) {
+            currentView = view;
+
+            document.querySelectorAll('.view-section').forEach(section => {
+                const sectionName = section.dataset.section;
+                const shouldShow = view === 'all' || sectionName === view;
+                section.classList.toggle('is-hidden', !shouldShow);
+            });
+            updateSectionVisibilityForResults();
+
+            document.querySelectorAll('#viewTabs .tab-btn').forEach(button => {
+                const isActive = button.dataset.view === view;
+                button.classList.toggle('active', isActive);
+                button.setAttribute('aria-pressed', String(isActive));
+            });
+
+            if (view === 'map' || view === 'all') {
+                setTimeout(() => {
+                    if (amapInstance) amapInstance.resize();
+                }, 80);
+            }
+
+            if (shouldScroll) {
+                const target = document.getElementById(view === 'all' ? 'filterPanel' : view);
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }
+        }
+
+        function createShopMarkerContent(number, category, shopId) {
+            return `<div class="map-marker ${category}" data-shop-id="${shopId}"><span>${number}</span></div>`;
+        }
+
+        function createSchoolMarkerContent() {
+            return '<div class="school-marker">校</div>';
+        }
+
+        function clearHighlightedShop() {
+            document.querySelectorAll('#map-container .map-marker.is-highlighted').forEach(marker => {
+                marker.classList.remove('is-highlighted');
+            });
+            document.querySelectorAll('.card-hover.is-selected').forEach(card => {
+                card.classList.remove('is-selected');
+            });
+            shopMarkersById.forEach(marker => {
+                if (typeof marker.setzIndex === 'function') marker.setzIndex(100);
+            });
+            highlightedShopId = null;
+        }
+
+        function applyHighlightedMarkerClass(shopId) {
+            const markerElement = document.querySelector(`#map-container .map-marker[data-shop-id="${shopId}"]`);
+            if (markerElement) markerElement.classList.add('is-highlighted');
+        }
+
+        function toLngLatArray(position) {
+            if (Array.isArray(position)) return position;
+            const lng = typeof position.getLng === 'function' ? position.getLng() : position.lng;
+            const lat = typeof position.getLat === 'function' ? position.getLat() : position.lat;
+            return [lng, lat];
+        }
+
+        function highlightShopOnMap(shopId, options = {}) {
+            const { scrollToMap = true, openInfo = true } = options;
+            const marker = shopMarkersById.get(shopId);
+            const infoWindow = shopInfoWindowsById.get(shopId);
+
+            if (!amapInstance || !marker) return;
+
+            clearHighlightedShop();
+            highlightedShopId = shopId;
+
+            const card = document.querySelector(`.card-hover[data-shop-id="${shopId}"]`);
+            if (card) card.classList.add('is-selected');
+
+            const mapSection = document.getElementById('map');
+            if (mapSection && mapSection.classList.contains('is-hidden')) {
+                setActiveView('all', false);
+            }
+
+            if (typeof marker.setzIndex === 'function') marker.setzIndex(1000);
+
+            const markerPosition = marker.getPosition();
+            const markerCenter = toLngLatArray(markerPosition);
+            const currentZoom = amapInstance.getZoom();
+            const targetZoom = Math.max(Math.round(currentZoom), 17);
+            amapInstance.resize();
+            amapInstance.setZoomAndCenter(targetZoom, markerCenter);
+            amapInstance.setCenter(markerCenter);
+
+            if (openInfo && infoWindow) {
+                infoWindow.open(amapInstance, markerPosition);
+            }
+
+            setTimeout(() => {
+                if (amapInstance) amapInstance.resize();
+                if (amapInstance) amapInstance.setZoomAndCenter(targetZoom, markerCenter);
+                if (amapInstance) amapInstance.setCenter(markerCenter);
+                if (openInfo && infoWindow) {
+                    infoWindow.open(amapInstance, markerPosition);
+                }
+                applyHighlightedMarkerClass(shopId);
+            }, 180);
+
+            if (scrollToMap && mapSection) {
+                mapSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         }
 
         // 绑定筛选事件
         document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('searchInput').addEventListener('input', initRender);
+            document.getElementById('priceRangeFilter').addEventListener('change', initRender);
+            document.getElementById('distanceRangeFilter').addEventListener('change', initRender);
+
+            document.querySelectorAll('#viewTabs .tab-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    setActiveView(this.dataset.view, true);
+                });
+            });
+
+            document.querySelectorAll('.nav-link[data-view]').forEach(link => {
+                link.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    setActiveView(this.dataset.view, true);
+                });
+            });
+
             // 美食筛选
             document.getElementById('foodTypeFilter').addEventListener('change', initRender);
             document.getElementById('foodSort').addEventListener('change', initRender);
             // 便民筛选
             document.getElementById('serviceTypeFilter').addEventListener('change', initRender);
 
+            document.addEventListener('click', function(event) {
+                const card = event.target.closest('.card-hover[data-shop-id]');
+                if (!card) return;
+                highlightShopOnMap(Number(card.dataset.shopId), { scrollToMap: true, openInfo: true });
+            });
+
+            document.addEventListener('keydown', function(event) {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                const card = event.target.closest('.card-hover[data-shop-id]');
+                if (!card) return;
+                event.preventDefault();
+                highlightShopOnMap(Number(card.dataset.shopId), { scrollToMap: true, openInfo: true });
+            });
+
             // 初次渲染
+            setActiveView(currentView);
             initRender();
 
-            // ===================== 4. 初始化地图 =====================
+            // ===================== 5. 初始化地图 =====================
             // 确保高德地图已加载
             if (typeof AMap !== 'undefined') {
-                const map = new AMap.Map('map-container', {
+                amapInstance = new AMap.Map('map-container', {
                     center: [SCHOOL_LNG, SCHOOL_LAT],
                     zoom: 16,
                     resizeEnable: true
                 });
 
-                // 添加标记
-                shops.forEach(shop => {
+                const shopMarkers = [];
+
+                // 添加店铺标记：编号对应 shops 数组中的 8 家店铺
+                shops.forEach((shop, index) => {
+                    const markerNumber = index + 1;
                     const marker = new AMap.Marker({
                         position: [shop.lng, shop.lat],
-                        title: shop.name,
-                        map: map
+                        title: `${markerNumber}. ${shop.name}`,
+                        content: createShopMarkerContent(markerNumber, shop.category, shop.id),
+                        offset: new AMap.Pixel(-15, -30),
+                        map: amapInstance,
+                        extData: { shopId: shop.id, markerNumber }
                     });
+                    shopMarkers.push(marker);
+                    shopMarkersById.set(shop.id, marker);
 
                     // 点击弹出信息窗口
                     const infoContent = `
                         <div style="padding:6px 10px; max-width:200px;">
-                            <strong>${shop.name}</strong><br>
+                            <strong>${markerNumber}. ${shop.name}</strong><br>
+                            类型：${shop.type}<br>
                             ${shop.desc}<br>
-                            ${shop.price ? '价格：¥'+shop.price : ''} ｜ 距离：${shop.distance}m<br>
+                            ${Number.isFinite(shop.price) ? '价格：¥'+shop.price : '价格面议'} ｜ 距离：${shop.distance}m<br>
                             ${shop.discount ? '优惠：'+shop.discount : ''}
                         </div>
                     `;
                     const infoWindow = new AMap.InfoWindow({
                         content: infoContent,
+                        autoMove: false,
                         offset: new AMap.Pixel(0, -30)
                     });
+                    shopInfoWindowsById.set(shop.id, infoWindow);
 
                     marker.on('click', function(e) {
-                        infoWindow.open(map, marker.getPosition());
+                        highlightShopOnMap(shop.id, { scrollToMap: false, openInfo: true });
                     });
                 });
 
-                // 添加学校中心标记（已修复图标，使用高德官方蓝色标记）
+                // 添加学校中心标记：单独显示“校”，不参与店铺编号
                 const schoolMarker = new AMap.Marker({
                     position: [SCHOOL_LNG, SCHOOL_LAT],
-                    icon: '//webapi.amap.com/theme/v1.3/markers/b/mark_bs.png',
-                    map: map
+                    title: '西北民族大学榆中校区',
+                    content: createSchoolMarkerContent(),
+                    offset: new AMap.Pixel(-17, -17),
+                    map: amapInstance
                 });
 
-                // 自适应地图包含所有标记
-                map.setFitView();
+                const schoolInfoWindow = new AMap.InfoWindow({
+                    content: '<div style="padding:6px 10px;"><strong>西北民族大学榆中校区</strong><br>校园中心参考位置</div>',
+                    offset: new AMap.Pixel(0, -24)
+                });
+
+                schoolMarker.on('click', function() {
+                    schoolInfoWindow.open(amapInstance, schoolMarker.getPosition());
+                });
+
+                const mapSummary = document.getElementById('mapSummary');
+                if (mapSummary) {
+                    mapSummary.textContent = `地图共标记 ${shopMarkers.length} 家店铺，编号 1-${shopMarkers.length} 与店铺数据一一对应；“校”为西北民族大学榆中校区。`;
+                }
+
+                // 自适应地图包含店铺和学校位置，但店铺数量只统计 shopMarkers
+                amapInstance.setFitView([...shopMarkers, schoolMarker], false, [60, 60, 60, 60]);
             } else {
                 document.getElementById('map-container').innerHTML = '<p class="text-red-500">高德地图加载失败，请检查Key是否正确</p>';
             }
         });
 
-        // ===================== 5. 备用：高德地图加载失败处理 =====================
+        // ===================== 6. 备用：高德地图加载失败处理 =====================
         window.onerror = function() {
             const mapContainer = document.getElementById('map-container');
             if (mapContainer && !document.querySelector('#map-container .amap-container')) {
